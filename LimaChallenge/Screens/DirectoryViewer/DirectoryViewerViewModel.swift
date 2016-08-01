@@ -99,7 +99,6 @@ extension DirectoryViewerViewModel {
         guard newChildren != nil else { return }
         children.forEach { (child: FileItem) in
             if !(newChildren!.contains(child.name!)) {
-//                print("-  -  -  -  -  -  \(child.name!) doesn't exist anymore -> delete it")
                 self.fileSystemService.deleteCachedItem(child.id!)
                 self.moc.deleteObject(child)
             }
@@ -112,7 +111,6 @@ extension DirectoryViewerViewModel {
     // We do this in a recursive way, to prevent having a lot of network requests at the same time.
     private func loadNextChildMetadata(childrenNames: [String]?, completionHandler: (NSError?) -> Void ) {
         guard let item = childrenNames?.first else {
-//            print("o  o  o  o  o  o  o  No more child to retrieve -> DONE\n")
             completionHandler(nil)
             return
         }
@@ -129,20 +127,17 @@ extension DirectoryViewerViewModel {
             guard let items = self.model.children?.allObjects as? [FileItem] else { return }
             let existingItems = items.filter({ $0.name! == item })
             if let existingItem = existingItems.first {
-//                print(".  .  .  .  .  .  .  Item already exists")
                 if let modificationTime = metadata!["modification_time"] as? Double {
                     shouldSaveItem = (existingItem.modificationTime != modificationTime)
                 }
                 
                 if shouldSaveItem {
-//                    print(".  .  .  .  .  .  .  Delete it")
                     self.fileSystemService.deleteCachedItem(existingItem.id!)
                     self.moc.deleteObject(existingItem)
                 }
             }
             
             if shouldSaveItem {
-//                print(".  .  .  .  .  .  .  Save the new child")
                 let fileItem: FileItem = self.moc.insertObject()
                 fileItem.name = item
                 if let mimetype = metadata!["mimetype"] as? String {
