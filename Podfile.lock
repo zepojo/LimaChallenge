@@ -1,0 +1,22 @@
+PODS:
+  - FLAnimatedImage (1.0.12)
+  - LGPlusButtonsView (1.1.1)
+  - RxCocoa (2.6.0):
+    - RxSwift (~> 2.5)
+  - RxSwift (2.6.0)
+
+DEPENDENCIES:
+  - FLAnimatedImage (~> 1.0)
+  - LGPlusButtonsView (~> 1.1.0)
+  - RxCocoa (~> 2.0)
+  - RxSwift (~> 2.0)
+
+SPEC CHECKSUMS:
+  FLAnimatedImage: 4a0b56255d9b05f18b6dd7ee06871be5d3b89e31
+  LGPlusButtonsView: 57878cd3d461d0ee2042f5b7b25d1c017e22a084
+  RxCocoa: 89ab00d5753502520227940e3a0e0a0413683c6b
+  RxSwift: 77f3a0b15324baa7a1c9bfa9f199648a82424e26
+
+PODFILE CHECKSUM: f175ae2e82d5c3e3ad38cd121401260e91b2169c
+
+COCOAPODS: 1.0.0

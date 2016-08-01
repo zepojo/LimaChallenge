@@ -1,0 +1,6 @@
+framework module Pods_LimaChallengeTests {
+  umbrella header "Pods-LimaChallengeTests-umbrella.h"
+
+  export *
+  module * { export * }
+}
