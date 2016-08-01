@@ -19,12 +19,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         UIApplication.sharedApplication().statusBarStyle = .LightContent
         
-        // FileItem objects (directories, files, ...) are stored into a CoreData database to be able
-        // to implement a cache, preventing downloading every item each time we use the app.
-        // For now, the cache isn't implemented, therefore we delete every previously stored item
-        // at every launch.
-        self.clearDB()
-        // We then re-create the root FileItem and start the navigation with it.
+        // On first launch, create a root item to start the navigation.
+        // On following launches, just retrieve this item.
         let rootItem = self.fetchInitialNode()
         
         let navigationController = self.window?.rootViewController as! UINavigationController
@@ -131,12 +127,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // MARK: - Database operations
     // Put here because there are only a few light DB-related task in this app
     // For a more advanced DB management, we should create a dedicated DataManager object
-    
-    func clearDB() {
-        let request = NSFetchRequest(entityName: FileItem.entityName)
-        let deletionRequest = NSBatchDeleteRequest(fetchRequest: request)
-        try! self.managedObjectContext.executeRequest(deletionRequest)
-    }
     
     func fetchInitialNode() -> FileItem {
         let request = NSFetchRequest(entityName: FileItem.entityName)

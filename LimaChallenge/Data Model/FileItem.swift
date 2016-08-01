@@ -77,6 +77,7 @@ extension FileItem: KeyCodable {
         case name
         case path
         case size
+        case modificationTime
         case favorite
         case root
         case children

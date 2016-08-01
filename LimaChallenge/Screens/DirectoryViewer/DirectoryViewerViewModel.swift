@@ -16,6 +16,7 @@ class DirectoryViewerViewModel: NSObject {
     private var model: FileItem!
     
     lazy private var networkService = NetworkService()
+    lazy private var fileSystemService = FileSystemService()
     
     private var moc: NSManagedObjectContext {
         return model.managedObjectContext!
@@ -87,41 +88,77 @@ extension DirectoryViewerViewModel {
                 return
             }
             
-            var fileItems = [FileItem]()
-            for item in items! {
-                let fileItem: FileItem = self.moc.insertObject()
-                fileItem.name = item
-                fileItems.append(fileItem)
-            }
-            self.model.children = NSSet(array: fileItems)
-            
-            completionHandler(nil)
-            
-            self.loadNextChildMetadata()
+            self.deleteObsoleteChildren(items)
+            self.loadNextChildMetadata(items, completionHandler: completionHandler)
         }
+    }
+    
+    // Delete every existing children that is not in the array of newly retrieved children
+    private func deleteObsoleteChildren(newChildren: [String]?) {
+        guard let children = self.model.children?.allObjects as? [FileItem] else { return }
+        guard newChildren != nil else { return }
+        children.forEach { (child: FileItem) in
+            if !(newChildren!.contains(child.name!)) {
+//                print("-  -  -  -  -  -  \(child.name!) doesn't exist anymore -> delete it")
+                self.fileSystemService.deleteCachedItem(child.id!)
+                self.moc.deleteObject(child)
+            }
+        }
+        self.moc.saveOrRollback()
     }
     
     // Once the content of a directory has been fetched, we retrieve all of its children metadata,
     // to get their type (directory, image, audio, ...) among other data.
     // We do this in a recursive way, to prevent having a lot of network requests at the same time.
-    private func loadNextChildMetadata() {
-        guard let items = model.children?.allObjects as? [FileItem] else { return }
-        let unsetItems = items.filter({ $0.type == FileItemType.unset.rawValue })
-        guard let item = unsetItems.first else { return }
+    private func loadNextChildMetadata(childrenNames: [String]?, completionHandler: (NSError?) -> Void ) {
+        guard let item = childrenNames?.first else {
+//            print("o  o  o  o  o  o  o  No more child to retrieve -> DONE\n")
+            completionHandler(nil)
+            return
+        }
         
-        networkService.loadItemMetadata(item.name!, fromDirectoryWithPath: model.path!) { (metadata: [String : AnyObject]?, error: NSError?) in
+        networkService.loadItemMetadata(item, fromDirectoryWithPath: model.path!) { (metadata: [String : AnyObject]?, error: NSError?) in
             if error != nil {
-                // Task has failed, but we don't need to inform the user (the fileItem will remain unchanged, with an .unset type)
+                // Task has failed, but we don't need to inform the user (the fileItem won't appear)
                 // and we should continue to fetch metadata for other items
                 print(error)
             }
             
-            if let mimetype = metadata!["mimetype"] as? String {
-                item.type = FileItem.fileItemTypeFromMimetype(mimetype).rawValue
+            var shouldSaveItem = true
+            
+            guard let items = self.model.children?.allObjects as? [FileItem] else { return }
+            let existingItems = items.filter({ $0.name! == item })
+            if let existingItem = existingItems.first {
+//                print(".  .  .  .  .  .  .  Item already exists")
+                if let modificationTime = metadata!["modification_time"] as? Double {
+                    shouldSaveItem = (existingItem.modificationTime != modificationTime)
+                }
+                
+                if shouldSaveItem {
+//                    print(".  .  .  .  .  .  .  Delete it")
+                    self.fileSystemService.deleteCachedItem(existingItem.id!)
+                    self.moc.deleteObject(existingItem)
+                }
             }
-            if let path = metadata!["path"] as? String { item.path = path }
-            if let size = metadata!["size"] as? Double { item.size = size }
-            self.loadNextChildMetadata()
+            
+            if shouldSaveItem {
+//                print(".  .  .  .  .  .  .  Save the new child")
+                let fileItem: FileItem = self.moc.insertObject()
+                fileItem.name = item
+                if let mimetype = metadata!["mimetype"] as? String {
+                    fileItem.type = FileItem.fileItemTypeFromMimetype(mimetype).rawValue
+                }
+                if let path = metadata!["path"] as? String { fileItem.path = path }
+                if let size = metadata!["size"] as? Double { fileItem.size = size }
+                if let modificationTime = metadata!["modification_time"] as? Double { fileItem.modificationTime = modificationTime }
+                fileItem.parent = self.model
+                
+                self.moc.saveOrRollback()
+            }
+            
+            var remainingChildrenNames = childrenNames!
+            remainingChildrenNames.removeFirst()
+            self.loadNextChildMetadata(remainingChildrenNames, completionHandler: completionHandler)
         }
     }
     
@@ -207,14 +244,8 @@ extension DirectoryViewerViewModel {
                 return
             }
             
-            let item: FileItem = self.moc.insertObject()
-            item.type = type.rawValue
-            item.name = name
-            item.path = "\(self.model.path!)/\(name)"
-            item.parent = self.model
-            self.moc.saveOrRollback()
-            
-            completionHandler(nil)
+            let newItem = [name]
+            self.loadNextChildMetadata(newItem, completionHandler: completionHandler)
         }
     }
     
